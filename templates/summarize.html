@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>📄 AI Note Summarizer</title>
+  <link rel="stylesheet" href="static/style.css">
+</head>
+<body>
+  <header>
+    <nav>
+      <a href="/">Home</a>
+      <a href="/summarize" class="active">Summarize</a>
+      <a href="/about">About</a>
+      <a href="/contact">Contact</a>
+      <a href="/privacy">Privacy</a>
+    </nav>
+  </header>
+
+  <div class="summarize-container">
+    <h1>📄 AI-Powered Note Summarizer</h1>
+    <p class="intro-text">Instantly summarize notes, lectures, or articles using cutting-edge AI.</p>
+
+    <form method="POST" enctype="multipart/form-data">
+      <div class="upload-section" id="drop-area">
+        <p>📁 Drag & Drop or <label for="file-upload" class="upload-label">Click to Upload File</label></p>
+        <input type="file" name="file" id="file-upload" hidden onchange="showFileName()">
+        <p id="file-name" style="margin-top:10px; font-weight:bold; color:#333;"></p>
+      </div>
+
+      <p class="or-text">Or paste your text below:</p>
+
+      <textarea name="noteText" placeholder="Paste your text here...">{{ input_text }}</textarea>
+
+      <div class="options-box">
+        <div class="option-group">
+          <label for="summaryType">📝 Summary Type:</label>
+          <select name="summaryType" id="summaryType">
+            <option value="Paragraph" {% if selected_summary_type == 'Paragraph' %}selected{% endif %}>Paragraph</option>
+            <option value="Bullet Points" {% if selected_summary_type == 'Bullet Points' %}selected{% endif %}>Bullet Points</option>
+            <option value="Structured Notes" {% if selected_summary_type == 'Structured Notes' %}selected{% endif %}>Structured Notes</option>
+            <option value="Outline" {% if selected_summary_type == 'Outline' %}selected{% endif %}>Outline</option>
+          </select>
+        </div>
+
+        <div class="option-group">
+          <label for="length">📏 Length:</label>
+          <select name="length" id="length">
+            <option value="Short" {% if selected_length == 'Short' %}selected{% endif %}>Short</option>
+            <option value="Medium" {% if selected_length == 'Medium' %}selected{% endif %}>Medium</option>
+            <option value="Long" {% if selected_length == 'Long' %}selected{% endif %}>Long</option>
+          </select>
+        </div>
+
+        <div class="option-group">
+          <label for="language">🌐 Language:</label>
+          <select name="language" id="language">
+            <option value="English" {% if selected_language == 'English' %}selected{% endif %}>English</option>
+            <option value="Tamil" {% if selected_language == 'Tamil' %}selected{% endif %}>Tamil</option>
+            <option value="Hindi" {% if selected_language == 'Hindi' %}selected{% endif %}>Hindi</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="generate-button">✨ Generate Summary</button>
+    </form>
+
+    {% if summary %}
+      <div class="summary-result">
+        <h2>📌 AI Structured Summary</h2>
+        <div class="summary-box">
+          {{ summary | safe }}
+        </div>
+
+        <form method="POST" action="/download_pdf">
+          <input type="hidden" name="summary_text" value="{{ summary }}">
+          <button type="submit" class="download-button">📥 Download as PDF</button>
+        </form>
+      </div>
+    {% endif %}
+  </div>
+
+  <footer>
+    © 2025 NoteSummarizer AI. All rights reserved.
+  </footer>
+
+  <script>
+    const dropArea = document.getElementById('drop-area');
+    const fileInput = document.getElementById('file-upload');
+    const fileNameDisplay = document.getElementById('file-name');
+
+    function showFileName() {
+      if(fileInput.files.length > 0) {
+        fileNameDisplay.textContent = '✅ Uploaded: ' + fileInput.files[0].name;
+      }
+    }
+
+    dropArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropArea.style.borderColor = '#007bff';
+    });
+
+    dropArea.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      dropArea.style.borderColor = '#ccc';
+    });
+
+    dropArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropArea.style.borderColor = '#ccc';
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        fileInput.files = files;
+        showFileName();
+      }
+    });
+  </script>
+</body>
+</html>
