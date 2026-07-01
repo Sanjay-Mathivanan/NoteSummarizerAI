@@ -1,5 +1,6 @@
 import os
 import requests
+import time
 from enum import Enum
 
 # Hugging Face Inference API configuration
@@ -45,37 +46,48 @@ def query_inference_api(text, min_len, max_len):
         }
     }
 
-    try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=25)
-        
-        # Handle backend model loading status (HTTP 503)
-        if response.status_code == 503:
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=25)
+            
+            # Handle backend model loading status (HTTP 503)
+            if response.status_code == 503:
+                data = response.json()
+                est_time = data.get("estimated_time", 20)
+                if attempt < max_retries - 1:
+                    print(f"Model is booting (503). Retrying in {min(est_time, 10)} seconds...")
+                    time.sleep(min(est_time, 10))
+                    continue
+                return f"⚠️ Hugging Face model is currently booting up. Please try again in {int(est_time)} seconds."
+                
+            response.raise_for_status()
             data = response.json()
-            est_time = data.get("estimated_time", 20)
-            return f"⚠️ Hugging Face model is currently booting up. Please try again in {int(est_time)} seconds."
             
-        response.raise_for_status()
-        data = response.json()
-        
-        if isinstance(data, list) and len(data) > 0 and "summary_text" in data[0]:
-            return data[0]["summary_text"]
-        else:
-            return f"⚠️ Unexpected response from Hugging Face: {data}"
-            
-    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as conn_err:
-        # If DNS/Connection fails (e.g. offline local testing), use local model if available
-        if HAS_LOCAL_MODEL:
-            try:
-                print(f"Connection failed ({conn_err}). Falling back to local model...")
-                model = get_local_summarizer()
-                if model:
-                    result = model(text, min_length=int(min_len), max_length=int(max_len), do_sample=False)
-                    return result[0]["summary_text"]
-            except Exception as local_err:
-                return f"⚠️ Local fallback error: {local_err}"
-        return f"⚠️ Connection Error: Failed to resolve the Hugging Face API host. Please verify your internet connection or configure local environment variables."
-    except Exception as e:
-        return f"⚠️ API Error: {e}"
+            if isinstance(data, list) and len(data) > 0 and "summary_text" in data[0]:
+                return data[0]["summary_text"]
+            else:
+                return f"⚠️ Unexpected response from Hugging Face: {data}"
+                
+        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as conn_err:
+            print(f"Attempt {attempt + 1} failed: {conn_err}")
+            if attempt < max_retries - 1:
+                time.sleep(2)
+                continue
+                
+            # If all retries failed, fall back to local model if available
+            if HAS_LOCAL_MODEL:
+                try:
+                    print("All API retries failed. Falling back to local model...")
+                    model = get_local_summarizer()
+                    if model:
+                        result = model(text, min_length=int(min_len), max_length=int(max_len), do_sample=False)
+                        return result[0]["summary_text"]
+                except Exception as local_err:
+                    return f"⚠️ Local fallback error: {local_err}"
+            return f"⚠️ Connection Error: Failed to resolve the Hugging Face API host. Please verify your internet connection or configure local environment variables."
+        except Exception as e:
+            return f"⚠️ API Error: {e}"
 
 # Split text into chunks
 def split_into_chunks(text, max_words=800):
