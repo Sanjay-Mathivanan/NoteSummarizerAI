@@ -1,8 +1,44 @@
-from transformers import pipeline
+import os
+import requests
 from enum import Enum
 
-# Load summarizer model
-summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+# Hugging Face Inference API configuration
+HF_API_KEY = os.getenv("HF_API_KEY", "")
+API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+
+def query_inference_api(text, min_len, max_len):
+    if not HF_API_KEY:
+        headers = {}
+    else:
+        headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+
+    payload = {
+        "inputs": text,
+        "parameters": {
+            "min_length": int(min_len),
+            "max_length": int(max_len),
+            "do_sample": False
+        }
+    }
+
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=40)
+        
+        # Handle backend model loading status (HTTP 503)
+        if response.status_code == 503:
+            data = response.json()
+            est_time = data.get("estimated_time", 20)
+            return f"⚠️ Hugging Face model is currently booting up. Please try again in {int(est_time)} seconds."
+            
+        response.raise_for_status()
+        data = response.json()
+        
+        if isinstance(data, list) and len(data) > 0 and "summary_text" in data[0]:
+            return data[0]["summary_text"]
+        else:
+            return f"⚠️ Unexpected response from Hugging Face: {data}"
+    except Exception as e:
+        return f"⚠️ API Error: {e}"
 
 # Split text into chunks
 def split_into_chunks(text, max_words=800):
@@ -65,11 +101,10 @@ def summarize_text(text, min_len=30, max_len=100, summary_type="Paragraph"):
     summaries = []
 
     for chunk in chunks:
-        try:
-            result = summarizer(chunk, min_length=min_len, max_length=max_len, do_sample=False)
-            summaries.append(result[0]['summary_text'])
-        except Exception as e:
-            summaries.append(f"⚠️ Error summarizing: {e}")
+        if not chunk.strip():
+            continue
+        result = query_inference_api(chunk, min_len, max_len)
+        summaries.append(result)
 
     combined_summary = ' '.join(summaries)
 

@@ -8,54 +8,19 @@ from flask import Flask, render_template, request, send_file
 from summarizer import summarize_text, SummaryType
 from fpdf import FPDF
 import docx
+from werkzeug.utils import secure_filename
 
 # Load env variables from .env
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "supersecret-default-fallback")
+# Load key from env, falling back to a secure default if undefined
+app.secret_key = os.getenv("FLASK_SECRET_KEY", "prod-fallback-secure-key-928471")
 
-def translate_text(text, src="auto", dest="en"):
-    if not text.strip():
-        return ""
-    # Split by paragraphs or chunks of ~2000 chars
-    max_chunk = 2000
-    chunks = []
-    current_chunk = []
-    current_len = 0
-    for line in text.split('\n'):
-        if current_len + len(line) + 1 > max_chunk:
-            chunks.append('\n'.join(current_chunk))
-            current_chunk = [line]
-            current_len = len(line)
-        else:
-            current_chunk.append(line)
-            current_len += len(line) + 1
-    if current_chunk:
-        chunks.append('\n'.join(current_chunk))
-        
-    translated_chunks = []
-    for chunk in chunks:
-        if not chunk.strip():
-            continue
-        try:
-            url = "https://translate.googleapis.com/translate_a/single"
-            params = {
-                "client": "gtx",
-                "sl": src,
-                "tl": dest,
-                "dt": "t",
-                "q": chunk
-            }
-            r = requests.get(url, params=params, timeout=10)
-            r.raise_for_status()
-            res = r.json()
-            translated_chunk = "".join([segment[0] for segment in res[0] if segment[0]])
-            translated_chunks.append(translated_chunk)
-        except Exception as e:
-            # Fallback to original chunk if translation fails
-            translated_chunks.append(chunk)
-    return '\n'.join(translated_chunks)
+ALLOWED_EXTENSIONS = {"txt", "pdf", "docx"}
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def clean_text_for_pdf(text):
     # Remove HTML tags (e.g., <b>, </b>, <br>)
@@ -98,30 +63,35 @@ def summarize():
         selected_language = request.form.get("language", "English")
         selected_length = request.form.get("length", "Medium")
 
+        # Handle file upload validation and parsing
         if uploaded_file and uploaded_file.filename != "":
-            if uploaded_file.filename.endswith(".docx"):
-                try:
-                    doc = docx.Document(uploaded_file)
-                    input_text = "\n".join([para.text for para in doc.paragraphs])
-                except Exception as e:
-                    input_text = f"Error reading DOCX: {e}"
-            elif uploaded_file.filename.endswith(".txt"):
-                try:
-                    input_text = uploaded_file.read().decode("utf-8")
-                except Exception as e:
-                    input_text = f"Error reading TXT: {e}"
-            elif uploaded_file.filename.endswith(".pdf"):
-                try:
-                    pdf_data = uploaded_file.read()
-                    pdf_doc = fitz.open(stream=pdf_data, filetype="pdf")
-                    pdf_text_parts = []
-                    for page in pdf_doc:
-                        page_text = page.get_text()
-                        if page_text:
-                            pdf_text_parts.append(page_text)
-                    input_text = "\n".join(pdf_text_parts)
-                except Exception as e:
-                    input_text = f"Error reading PDF: {e}"
+            if not allowed_file(uploaded_file.filename):
+                input_text = "Error: Unsupported file format. Please upload only .txt, .docx, or .pdf files."
+            else:
+                filename = secure_filename(uploaded_file.filename)
+                if filename.endswith(".docx"):
+                    try:
+                        doc = docx.Document(uploaded_file)
+                        input_text = "\n".join([para.text for para in doc.paragraphs])
+                    except Exception as e:
+                        input_text = f"Error reading DOCX: {e}"
+                elif filename.endswith(".txt"):
+                    try:
+                        input_text = uploaded_file.read().decode("utf-8")
+                    except Exception as e:
+                        input_text = f"Error reading TXT: {e}"
+                elif filename.endswith(".pdf"):
+                    try:
+                        pdf_data = uploaded_file.read()
+                        pdf_doc = fitz.open(stream=pdf_data, filetype="pdf")
+                        pdf_text_parts = []
+                        for page in pdf_doc:
+                            page_text = page.get_text()
+                            if page_text:
+                                pdf_text_parts.append(page_text)
+                        input_text = "\n".join(pdf_text_parts)
+                    except Exception as e:
+                        input_text = f"Error reading PDF: {e}"
 
         length_map = {
             "Short": (30, 80),
@@ -130,9 +100,8 @@ def summarize():
         }
         min_len, max_len = length_map.get(selected_length, (80, 150))
 
-        if input_text.strip() and not (input_text.startswith("Error reading PDF") or 
-                                       input_text.startswith("Error reading DOCX") or 
-                                       input_text.startswith("Error reading TXT")):
+        # Check if input text is valid and has no parser errors
+        if input_text.strip() and not input_text.startswith("Error"):
             # Map selected language to Google Translate codes
             lang_map = {
                 "Tamil": "ta",
@@ -149,7 +118,7 @@ def summarize():
             summary_en = summarize_text(processing_text, min_len, max_len, selected_summary_type)
 
             # If target language is Hindi or Tamil, translate the English summary back
-            if target_lang and not summary_en.startswith("⚠️ Error summarizing"):
+            if target_lang and not summary_en.startswith("⚠️"):
                 summary = translate_text(summary_en, src="en", dest=target_lang)
             else:
                 summary = summary_en
@@ -197,5 +166,49 @@ def contact():
 def privacy():
     return render_template("privacy.html")
 
+def translate_text(text, src="auto", dest="en"):
+    if not text.strip():
+        return ""
+    # Split by paragraphs or chunks of ~2000 chars
+    max_chunk = 2000
+    chunks = []
+    current_chunk = []
+    current_len = 0
+    for line in text.split('\n'):
+        if current_len + len(line) + 1 > max_chunk:
+            chunks.append('\n'.join(current_chunk))
+            current_chunk = [line]
+            current_len = len(line)
+        else:
+            current_chunk.append(line)
+            current_len += len(line) + 1
+    if current_chunk:
+        chunks.append('\n'.join(current_chunk))
+        
+    translated_chunks = []
+    for chunk in chunks:
+        if not chunk.strip():
+            continue
+        try:
+            url = "https://translate.googleapis.com/translate_a/single"
+            params = {
+                "client": "gtx",
+                "sl": src,
+                "tl": dest,
+                "dt": "t",
+                "q": chunk
+            }
+            r = requests.get(url, params=params, timeout=10)
+            r.raise_for_status()
+            res = r.json()
+            translated_chunk = "".join([segment[0] for segment in res[0] if segment[0]])
+            translated_chunks.append(translated_chunk)
+        except Exception as e:
+            # Fallback to original chunk if translation fails
+            translated_chunks.append(chunk)
+    return '\n'.join(translated_chunks)
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    # Render binds dynamically to the PORT environment variable
+    port = int(os.getenv("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
