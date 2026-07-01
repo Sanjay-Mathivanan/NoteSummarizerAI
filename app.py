@@ -43,6 +43,40 @@ def clean_text_for_pdf(text):
     # Safe encoding to latin-1 (ignore any un-encodable characters)
     return text_clean.encode('latin-1', errors='ignore').decode('latin-1')
 
+@app.route("/debug-dns")
+def debug_dns():
+    import socket
+    import subprocess
+    results = {}
+    
+    # 1. Try socket.gethostbyname for Hugging Face
+    try:
+        results["gethostbyname_hf"] = socket.gethostbyname("api-inference.huggingface.co")
+    except Exception as e:
+        results["gethostbyname_hf"] = f"Error: {e}"
+        
+    # 2. Try socket.gethostbyname for Google
+    try:
+        results["gethostbyname_google"] = socket.gethostbyname("google.com")
+    except Exception as e:
+        results["gethostbyname_google"] = f"Error: {e}"
+        
+    # 3. Try running nslookup for Hugging Face
+    try:
+        res = subprocess.run(["nslookup", "api-inference.huggingface.co"], capture_output=True, text=True, timeout=5)
+        results["nslookup_hf"] = f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+    except Exception as e:
+        results["nslookup_hf"] = f"Error: {e}"
+        
+    # 4. Try running curl to Hugging Face status or API URL
+    try:
+        res = subprocess.run(["curl", "-I", "https://api-inference.huggingface.co"], capture_output=True, text=True, timeout=5)
+        results["curl_hf"] = f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+    except Exception as e:
+        results["curl_hf"] = f"Error: {e}"
+        
+    return results
+
 @app.route("/")
 def home():
     return render_template("index.html")
