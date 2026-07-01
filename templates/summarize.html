@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>📄 AI Note Summarizer</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📄 AI Note Summarizer - Process & Summarize</title>
+  <meta name="description" content="Generate AI summaries of your notes, lecture texts, and PDF documents. Select your preferred length and format type.">
+  <meta name="keywords" content="text summarizer tool, study notes AI, summarize lectures, bullet point notes generator">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📝</text></svg>">
   <link rel="stylesheet" href="static/style.css">
 </head>
 <body>
@@ -20,14 +24,14 @@
     <h1>📄 AI-Powered Note Summarizer</h1>
     <p class="intro-text">Instantly summarize notes, lectures, or articles using cutting-edge AI.</p>
 
-    <form method="POST" enctype="multipart/form-data">
+    <form id="summarize-form" method="POST" enctype="multipart/form-data">
       <div class="upload-section" id="drop-area">
         <p>📁 Drag & Drop or <label for="file-upload" class="upload-label">Click to Upload File</label></p>
         <input type="file" name="file" id="file-upload" hidden onchange="showFileName()">
-        <p id="file-name" style="margin-top:10px; font-weight:bold; color:#333;"></p>
+        <p id="file-name" style="margin-top:12px; font-weight:700; color:#a5b4fc;"></p>
       </div>
 
-      <p class="or-text">Or paste your text below:</p>
+      <p class="or-text">Or paste your text below</p>
 
       <textarea name="noteText" placeholder="Paste your text here...">{{ input_text }}</textarea>
 
@@ -66,10 +70,13 @@
 
     {% if summary %}
       <div class="summary-result">
-        <h2>📌 AI Structured Summary</h2>
-        <div class="summary-box">
-          {{ summary | safe }}
+        <div class="summary-header-row">
+          <h2>📌 AI Structured Summary</h2>
+          <div class="summary-actions">
+            <button onclick="copySummary()" class="btn-secondary" id="copy-btn">📋 Copy Summary</button>
+          </div>
         </div>
+        <div class="summary-box" id="summary-box">{{ summary | safe }}</div>
 
         <form method="POST" action="/download_pdf">
           <input type="hidden" name="summary_text" value="{{ summary }}">
@@ -79,14 +86,21 @@
     {% endif %}
   </div>
 
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loading-text">Analyzing Notes...</div>
+    <div class="loading-subtext">Generating summary using BART-large-CNN</div>
+  </div>
+
   <footer>
-    © 2025 NoteSummarizer AI. All rights reserved.
+    &copy; 2025 NoteSummarizer AI. All rights reserved.
   </footer>
 
   <script>
     const dropArea = document.getElementById('drop-area');
     const fileInput = document.getElementById('file-upload');
     const fileNameDisplay = document.getElementById('file-name');
+    const summarizeForm = document.getElementById('summarize-form');
 
     function showFileName() {
       if(fileInput.files.length > 0) {
@@ -96,23 +110,61 @@
 
     dropArea.addEventListener('dragover', (e) => {
       e.preventDefault();
-      dropArea.style.borderColor = '#007bff';
+      dropArea.classList.add('dragover');
     });
 
     dropArea.addEventListener('dragleave', (e) => {
       e.preventDefault();
-      dropArea.style.borderColor = '#ccc';
+      dropArea.classList.remove('dragover');
     });
 
     dropArea.addEventListener('drop', (e) => {
       e.preventDefault();
-      dropArea.style.borderColor = '#ccc';
+      dropArea.classList.remove('dragover');
       const files = e.dataTransfer.files;
       if (files.length > 0) {
         fileInput.files = files;
         showFileName();
       }
     });
+
+    summarizeForm.addEventListener('submit', (e) => {
+      const noteText = document.querySelector('textarea[name="noteText"]').value;
+      const hasFile = fileInput.files.length > 0;
+
+      if (noteText.trim() || hasFile) {
+        document.getElementById('loading-overlay').classList.add('active');
+
+        const texts = [
+          "Analyzing notes...",
+          "Extracting key concepts...",
+          "Generating summary...",
+          "Formatting output...",
+          "Almost ready..."
+        ];
+        let i = 0;
+        setInterval(() => {
+          i = (i + 1) % texts.length;
+          document.getElementById('loading-text').textContent = texts[i];
+        }, 3000);
+      }
+    });
+
+    function copySummary() {
+      const summaryBox = document.getElementById('summary-box');
+      const copyBtn = document.getElementById('copy-btn');
+      
+      const text = summaryBox.innerText || summaryBox.textContent;
+      
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.innerHTML = '✅ Copied!';
+        setTimeout(() => {
+          copyBtn.innerHTML = '📋 Copy Summary';
+        }, 2000);
+      }).catch(err => {
+        console.error('Failed to copy: ', err);
+      });
+    }
   </script>
 </body>
 </html>
