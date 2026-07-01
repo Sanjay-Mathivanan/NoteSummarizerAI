@@ -6,12 +6,36 @@ from enum import Enum
 HF_API_KEY = os.getenv("HF_API_KEY", "")
 API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
 
-def query_inference_api(text, min_len, max_len):
-    if not HF_API_KEY:
-        headers = {}
-    else:
-        headers = {"Authorization": f"Bearer {HF_API_KEY}"}
+# Try importing transformers locally for development fallback
+try:
+    from transformers import pipeline
+    HAS_LOCAL_MODEL = True
+except ImportError:
+    HAS_LOCAL_MODEL = False
 
+local_summarizer = None
+
+def get_local_summarizer():
+    global local_summarizer
+    if local_summarizer is None and HAS_LOCAL_MODEL:
+        print("Loading local summarizer model (fallback)...")
+        # Load the model locally using CPU
+        local_summarizer = pipeline("summarization", model="facebook/bart-large-cnn")
+    return local_summarizer
+
+def query_inference_api(text, min_len, max_len):
+    # If no API key is set and local fallback is available, use the local model directly
+    if not HF_API_KEY and HAS_LOCAL_MODEL:
+        try:
+            model = get_local_summarizer()
+            if model:
+                print("Running summarization locally...")
+                result = model(text, min_length=int(min_len), max_length=int(max_len), do_sample=False)
+                return result[0]["summary_text"]
+        except Exception as local_err:
+            return f"⚠️ Local fallback error: {local_err}"
+
+    headers = {"Authorization": f"Bearer {HF_API_KEY}"} if HF_API_KEY else {}
     payload = {
         "inputs": text,
         "parameters": {
@@ -22,7 +46,7 @@ def query_inference_api(text, min_len, max_len):
     }
 
     try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=40)
+        response = requests.post(API_URL, headers=headers, json=payload, timeout=25)
         
         # Handle backend model loading status (HTTP 503)
         if response.status_code == 503:
@@ -37,6 +61,19 @@ def query_inference_api(text, min_len, max_len):
             return data[0]["summary_text"]
         else:
             return f"⚠️ Unexpected response from Hugging Face: {data}"
+            
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as conn_err:
+        # If DNS/Connection fails (e.g. offline local testing), use local model if available
+        if HAS_LOCAL_MODEL:
+            try:
+                print(f"Connection failed ({conn_err}). Falling back to local model...")
+                model = get_local_summarizer()
+                if model:
+                    result = model(text, min_length=int(min_len), max_length=int(max_len), do_sample=False)
+                    return result[0]["summary_text"]
+            except Exception as local_err:
+                return f"⚠️ Local fallback error: {local_err}"
+        return f"⚠️ Connection Error: Failed to resolve the Hugging Face API host. Please verify your internet connection or configure local environment variables."
     except Exception as e:
         return f"⚠️ API Error: {e}"
 
