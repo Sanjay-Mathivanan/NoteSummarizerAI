@@ -49,7 +49,7 @@ def query_inference_api(text, min_len, max_len):
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            response = requests.post(API_URL, headers=headers, json=payload, timeout=25)
+            response = requests.post(API_URL, headers=headers, json=payload, timeout=15)
             
             # Handle backend model loading status (HTTP 503)
             if response.status_code == 503:
@@ -69,13 +69,27 @@ def query_inference_api(text, min_len, max_len):
             else:
                 return f"⚠️ Unexpected response from Hugging Face: {data}"
                 
-        except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as conn_err:
-            print(f"Attempt {attempt + 1} failed: {conn_err}")
+        except requests.exceptions.Timeout as timeout_err:
+            print(f"Attempt {attempt + 1} failed (Timeout): {timeout_err}")
+            if attempt < max_retries - 1:
+                time.sleep(4)
+                continue
+            if HAS_LOCAL_MODEL:
+                try:
+                    print("All API retries timed out. Falling back to local model...")
+                    model = get_local_summarizer()
+                    if model:
+                        result = model(text, min_length=int(min_len), max_length=int(max_len), do_sample=False)
+                        return result[0]["summary_text"]
+                except Exception as local_err:
+                    return f"⚠️ Local fallback error: {local_err}"
+            return f"⚠️ Connection Timeout: The Hugging Face API took too long to respond. Please try again."
+            
+        except requests.exceptions.ConnectionError as conn_err:
+            print(f"Attempt {attempt + 1} failed (Connection): {conn_err}")
             if attempt < max_retries - 1:
                 time.sleep(2)
                 continue
-                
-            # If all retries failed, fall back to local model if available
             if HAS_LOCAL_MODEL:
                 try:
                     print("All API retries failed. Falling back to local model...")
