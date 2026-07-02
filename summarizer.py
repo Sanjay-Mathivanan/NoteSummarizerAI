@@ -5,7 +5,7 @@ from enum import Enum
 
 # Hugging Face Inference API configuration
 HF_API_KEY = os.getenv("HF_API_KEY", "")
-API_URL = "https://api-inference.huggingface.co/models/facebook/bart-large-cnn"
+API_URL = "https://router.huggingface.co/hf-inference/models/facebook/bart-large-cnn"
 
 # Try importing transformers locally for development fallback
 try:
@@ -85,7 +85,7 @@ def query_inference_api(text, min_len, max_len):
                         return result[0]["summary_text"]
                 except Exception as local_err:
                     return f"⚠️ Local fallback error: {local_err}"
-            return f"⚠️ Connection Error: Failed to resolve the Hugging Face API host. Please verify your internet connection or configure local environment variables."
+            return f"⚠️ Connection Error: {conn_err}. Please verify your internet connection or configure local environment variables."
         except Exception as e:
             return f"⚠️ API Error: {e}"
 

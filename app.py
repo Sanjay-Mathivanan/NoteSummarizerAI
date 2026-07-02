@@ -51,7 +51,7 @@ def debug_dns():
     
     # 1. Try socket.gethostbyname for Hugging Face
     try:
-        results["gethostbyname_hf"] = socket.gethostbyname("api-inference.huggingface.co")
+        results["gethostbyname_hf"] = socket.gethostbyname("router.huggingface.co")
     except Exception as e:
         results["gethostbyname_hf"] = f"Error: {e}"
         
@@ -63,14 +63,14 @@ def debug_dns():
         
     # 3. Try running nslookup for Hugging Face
     try:
-        res = subprocess.run(["nslookup", "api-inference.huggingface.co"], capture_output=True, text=True, timeout=5)
+        res = subprocess.run(["nslookup", "router.huggingface.co"], capture_output=True, text=True, timeout=5)
         results["nslookup_hf"] = f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     except Exception as e:
         results["nslookup_hf"] = f"Error: {e}"
         
     # 4. Try running curl to Hugging Face status or API URL
     try:
-        res = subprocess.run(["curl", "-I", "https://api-inference.huggingface.co"], capture_output=True, text=True, timeout=5)
+        res = subprocess.run(["curl", "-I", "https://router.huggingface.co"], capture_output=True, text=True, timeout=5)
         results["curl_hf"] = f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     except Exception as e:
         results["curl_hf"] = f"Error: {e}"
