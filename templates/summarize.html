@@ -25,32 +25,40 @@
     <p class="intro-text">Instantly summarize notes, lectures, or articles using cutting-edge AI.</p>
 
     <form id="summarize-form" method="POST" enctype="multipart/form-data">
-      <div class="upload-section" id="drop-area">
-        <div class="upload-icon-container">
-          <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-            <polyline points="17 8 12 3 7 8"></polyline>
-            <line x1="12" y1="3" x2="12" y2="15"></line>
-          </svg>
-        </div>
-        <p class="upload-text">Drag & drop your files here or <label for="file-upload" class="upload-label">Browse Files</label></p>
-        <p class="upload-hint">Supported formats: PDF, DOCX, TXT (Max 5MB)</p>
-        <input type="file" name="file" id="file-upload" accept=".pdf,.docx,.txt" hidden onchange="showFileName()">
-        
-        <div id="file-details" class="file-details-box" style="display: none;">
-          <div class="file-icon">📄</div>
-          <div class="file-info">
-            <p id="file-name" class="detail-file-name"></p>
-            <p id="file-size" class="detail-file-size"></p>
+      <div class="input-split-container">
+        <div class="input-split-left">
+          <div class="upload-section" id="drop-area">
+            <div class="upload-icon-container">
+              <svg class="upload-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <p class="upload-text">Drag & drop your files here or <label for="file-upload" class="upload-label">Browse Files</label></p>
+            <p class="upload-hint">Supported formats: PDF, DOCX, TXT (Max 5MB)</p>
+            <input type="file" name="file" id="file-upload" accept=".pdf,.docx,.txt" hidden onchange="showFileName()">
+            
+            <div id="file-details" class="file-details-box" style="display: none;">
+              <div class="file-icon">📄</div>
+              <div class="file-info">
+                <p id="file-name" class="detail-file-name"></p>
+                <p id="file-size" class="detail-file-size"></p>
+              </div>
+              <button type="button" class="remove-file-btn" onclick="clearFile(event)">✕</button>
+            </div>
+            <p id="validation-error" class="validation-error-text" style="display: none;"></p>
           </div>
-          <button type="button" class="remove-file-btn" onclick="clearFile(event)">✕</button>
         </div>
-        <p id="validation-error" class="validation-error-text" style="display: none;"></p>
+
+        <div class="input-split-divider">
+          <span>OR</span>
+        </div>
+
+        <div class="input-split-right">
+          <textarea name="noteText" placeholder="Paste your text here...">{{ input_text }}</textarea>
+        </div>
       </div>
-
-      <p class="or-text">Or paste your text below</p>
-
-      <textarea name="noteText" placeholder="Paste your text here...">{{ input_text }}</textarea>
 
       <div class="options-box">
         <div class="option-group full-width-mobile">
