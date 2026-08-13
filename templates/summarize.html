@@ -123,6 +123,11 @@
         <button type="submit" class="download-button">📥 Download as PDF</button>
       </form>
     </div>
+
+    <div class="history-section" id="history-section" style="display: none;">
+      <h3>🕰️ Recent Summaries</h3>
+      <div class="history-list" id="history-list"></div>
+    </div>
   </div>
 
   <div class="loading-overlay" id="loading-overlay">
@@ -311,6 +316,15 @@
           // Force layout reflow
           void summaryResult.offsetHeight;
           summaryResult.classList.add('visible');
+
+          // Save to LocalStorage History
+          let title = "Text Snippet";
+          if (fileInput.files.length > 0) {
+            title = fileInput.files[0].name;
+          } else if (noteText.trim()) {
+            title = noteText.trim().substring(0, 25) + (noteText.trim().length > 25 ? "..." : "");
+          }
+          saveToHistory(title, data.summary, data.key_topics || [], noteText);
         } else {
           alert("Could not generate summary: " + (data.error || "unknown error"));
         }
@@ -425,6 +439,160 @@
         listenBtn.classList.add('speaking');
       }
     }
+
+    // History logic
+    function saveToHistory(title, summary, key_topics, input_text) {
+      try {
+        let history = JSON.parse(localStorage.getItem('notesum_history')) || [];
+        
+        const exists = history.some(item => item.summary === summary && item.input_text === input_text);
+        if (exists) return;
+
+        const options = { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+        const timestamp = new Date().toLocaleString('en-US', options);
+
+        const newItem = {
+          id: Date.now(),
+          title: title,
+          summary: summary,
+          key_topics: key_topics,
+          input_text: input_text,
+          timestamp: timestamp
+        };
+
+        history.unshift(newItem);
+        history = history.slice(0, 5);
+        localStorage.setItem('notesum_history', JSON.stringify(history));
+        
+        renderHistory();
+      } catch (e) {
+        console.error("Failed to save history:", e);
+      }
+    }
+
+    function renderHistory() {
+      const historySection = document.getElementById('history-section');
+      const historyList = document.getElementById('history-list');
+      
+      try {
+        const history = JSON.parse(localStorage.getItem('notesum_history')) || [];
+        
+        if (history.length === 0) {
+          historySection.style.display = 'none';
+          return;
+        }
+
+        historyList.innerHTML = '';
+        history.forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'history-item';
+          card.onclick = () => loadHistoryItem(item.id);
+
+          const deleteBtn = document.createElement('button');
+          deleteBtn.className = 'history-item-delete';
+          deleteBtn.innerHTML = '✕';
+          deleteBtn.title = 'Remove from history';
+          deleteBtn.onclick = (e) => deleteHistoryItem(item.id, e);
+
+          const title = document.createElement('div');
+          title.className = 'history-item-title';
+          title.textContent = item.title;
+
+          const date = document.createElement('div');
+          date.className = 'history-item-date';
+          date.textContent = item.timestamp;
+
+          const tags = document.createElement('div');
+          tags.className = 'history-item-tags';
+          
+          if (item.key_topics && item.key_topics.length > 0) {
+            item.key_topics.slice(0, 3).forEach(topic => {
+              const tag = document.createElement('span');
+              tag.className = 'history-item-tag';
+              tag.textContent = topic;
+              tags.appendChild(tag);
+            });
+          }
+
+          card.appendChild(deleteBtn);
+          card.appendChild(title);
+          card.appendChild(date);
+          card.appendChild(tags);
+          historyList.appendChild(card);
+        });
+
+        historySection.style.display = 'block';
+      } catch (e) {
+        console.error("Failed to render history:", e);
+      }
+    }
+
+    function loadHistoryItem(id) {
+      try {
+        const history = JSON.parse(localStorage.getItem('notesum_history')) || [];
+        const item = history.find(i => i.id === id);
+        if (!item) return;
+
+        document.querySelector('textarea[name="noteText"]').value = item.input_text;
+        
+        const summaryBox = document.getElementById('summary-box');
+        const pdfSummaryText = document.getElementById('pdf-summary-text');
+        const topicsContainer = document.getElementById('key-topics-container');
+        const summaryResult = document.getElementById('summary-result');
+        
+        summaryBox.innerHTML = item.summary;
+        pdfSummaryText.value = item.summary;
+
+        topicsContainer.innerHTML = '';
+        if (item.key_topics && item.key_topics.length > 0) {
+          item.key_topics.forEach(topic => {
+            const tag = document.createElement('span');
+            tag.className = 'key-tag';
+            tag.innerHTML = '🏷️ ' + topic;
+            topicsContainer.appendChild(tag);
+          });
+          topicsContainer.style.display = 'flex';
+        } else {
+          topicsContainer.style.display = 'none';
+        }
+
+        summaryResult.style.display = 'block';
+        void summaryResult.offsetHeight;
+        summaryResult.classList.add('visible');
+
+        summaryResult.scrollIntoView({ behavior: 'smooth' });
+
+        if (isSpeaking) {
+          synth.cancel();
+          isSpeaking = false;
+          const listenBtn = document.getElementById('listen-btn');
+          listenBtn.innerHTML = '🔊 Listen';
+          listenBtn.classList.remove('speaking');
+        }
+      } catch (e) {
+        console.error("Failed to load history item:", e);
+      }
+    }
+
+    function deleteHistoryItem(id, event) {
+      if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+      }
+      try {
+        let history = JSON.parse(localStorage.getItem('notesum_history')) || [];
+        history = history.filter(item => item.id !== id);
+        localStorage.setItem('notesum_history', JSON.stringify(history));
+        renderHistory();
+      } catch (e) {
+        console.error("Failed to delete history item:", e);
+      }
+    }
+
+    // Initialize history on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      renderHistory();
+    });
   </script>
 </body>
 </html>
