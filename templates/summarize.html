@@ -76,6 +76,7 @@
           <button onclick="copySummary()" class="btn-secondary" id="copy-btn">📋 Copy Summary</button>
         </div>
       </div>
+      <div class="key-topics-container" id="key-topics-container" style="display: none;"></div>
       <div class="summary-box" id="summary-box"></div>
 
       <form method="POST" action="/download_pdf" id="download-form">
@@ -193,9 +194,24 @@
         if (data.summary) {
           const summaryBox = document.getElementById('summary-box');
           const pdfSummaryText = document.getElementById('pdf-summary-text');
+          const topicsContainer = document.getElementById('key-topics-container');
           
           summaryBox.innerHTML = data.summary;
           pdfSummaryText.value = data.summary;
+
+          // Render key topics tags
+          topicsContainer.innerHTML = '';
+          if (data.key_topics && data.key_topics.length > 0) {
+            data.key_topics.forEach(topic => {
+              const tag = document.createElement('span');
+              tag.className = 'key-tag';
+              tag.innerHTML = '🏷️ ' + topic;
+              topicsContainer.appendChild(tag);
+            });
+            topicsContainer.style.display = 'flex';
+          } else {
+            topicsContainer.style.display = 'none';
+          }
 
           // Animate rendering of the results box
           summaryResult.style.display = 'block';

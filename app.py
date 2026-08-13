@@ -162,7 +162,8 @@ def summarize():
         return jsonify({
             "success": not summary.startswith("⚠️"),
             "summary": summary,
-            "input_text": input_text
+            "input_text": input_text,
+            "key_topics": extract_key_topics(processing_text) if not summary.startswith("⚠️") else []
         })
 
     return render_template("summarize.html",
@@ -249,6 +250,42 @@ def translate_text(text, src="auto", dest="en"):
             # Fallback to original chunk if translation fails
             translated_chunks.append(chunk)
     return '\n'.join(translated_chunks)
+
+def extract_key_topics(text, max_topics=5):
+    # Standard list of common English stopwords to ignore
+    stopwords = {
+        "i", "me", "my", "myself", "we", "our", "ours", "ourselves", "you", "your", "yours", 
+        "yourself", "yourselves", "he", "him", "his", "himself", "she", "her", "hers", 
+        "herself", "it", "its", "itself", "they", "them", "their", "theirs", "themselves", 
+        "what", "which", "who", "whom", "this", "that", "these", "those", "am", "is", "are", 
+        "was", "were", "be", "been", "being", "have", "has", "had", "having", "do", "does", 
+        "did", "doing", "a", "an", "the", "and", "but", "if", "or", "because", "as", "until", 
+        "while", "of", "at", "by", "for", "with", "about", "against", "between", "into", 
+        "through", "during", "before", "after", "above", "below", "to", "from", "up", "down", 
+        "in", "out", "on", "off", "over", "under", "again", "further", "then", "once", "here", 
+        "there", "when", "where", "why", "how", "all", "any", "both", "each", "few", "more", 
+        "most", "other", "some", "such", "no", "nor", "not", "only", "own", "same", "so", 
+        "than", "too", "very", "s", "t", "can", "will", "just", "don", "should", "now",
+        "would", "could", "also", "using", "use", "make", "get", "like", "one", "two", "new"
+    }
+    # Clean text: remove non-alphabetic characters
+    cleaned = re.sub(r'[^a-zA-Z\s]', '', text).lower()
+    words = cleaned.split()
+    
+    # Filter words (longer than 3 chars, not in stopwords)
+    filtered = [w for w in words if len(w) > 3 and w not in stopwords]
+    
+    # Count frequencies
+    freq = {}
+    for w in filtered:
+        freq[w] = freq.get(w, 0) + 1
+        
+    # Sort by frequency and then by length
+    sorted_words = sorted(freq.items(), key=lambda item: (item[1], len(item[0])), reverse=True)
+    
+    # Return top N keywords capitalized
+    topics = [item[0].capitalize() for item in sorted_words[:max_topics]]
+    return topics
 
 if __name__ == "__main__":
     # Render binds dynamically to the PORT environment variable
