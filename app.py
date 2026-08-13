@@ -4,7 +4,7 @@ import re
 import requests
 import fitz  # PyMuPDF
 from dotenv import load_dotenv
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, jsonify
 from summarizer import summarize_text, SummaryType
 from fpdf import FPDF
 import docx
@@ -156,6 +156,14 @@ def summarize():
                 summary = translate_text(summary_en, src="en", dest=target_lang)
             else:
                 summary = summary_en
+        else:
+            summary = f"⚠️ Error: {input_text or 'No text or file provided.'}"
+
+        return jsonify({
+            "success": not summary.startswith("⚠️"),
+            "summary": summary,
+            "input_text": input_text
+        })
 
     return render_template("summarize.html",
                            summary=summary,

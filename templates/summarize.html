@@ -68,23 +68,21 @@
       <button type="submit" class="generate-button">✨ Generate Summary</button>
     </form>
 
-    {% if summary %}
-      <div class="summary-result">
-        <div class="summary-header-row">
-          <h2>📌 AI Structured Summary</h2>
-          <div class="summary-actions" style="display: flex; gap: 8px;">
-            <button onclick="toggleListen()" class="btn-secondary" id="listen-btn">🔊 Listen</button>
-            <button onclick="copySummary()" class="btn-secondary" id="copy-btn">📋 Copy Summary</button>
-          </div>
+    <div class="summary-result" id="summary-result">
+      <div class="summary-header-row">
+        <h2>📌 AI Structured Summary</h2>
+        <div class="summary-actions" style="display: flex; gap: 8px;">
+          <button onclick="toggleListen()" class="btn-secondary" id="listen-btn">🔊 Listen</button>
+          <button onclick="copySummary()" class="btn-secondary" id="copy-btn">📋 Copy Summary</button>
         </div>
-        <div class="summary-box" id="summary-box">{{ summary | safe }}</div>
-
-        <form method="POST" action="/download_pdf">
-          <input type="hidden" name="summary_text" value="{{ summary }}">
-          <button type="submit" class="download-button">📥 Download as PDF</button>
-        </form>
       </div>
-    {% endif %}
+      <div class="summary-box" id="summary-box"></div>
+
+      <form method="POST" action="/download_pdf" id="download-form">
+        <input type="hidden" name="summary_text" id="pdf-summary-text" value="">
+        <button type="submit" class="download-button">📥 Download as PDF</button>
+      </form>
+    </div>
   </div>
 
   <div class="loading-overlay" id="loading-overlay">
@@ -130,25 +128,90 @@
     });
 
     summarizeForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
       const noteText = document.querySelector('textarea[name="noteText"]').value;
       const hasFile = fileInput.files.length > 0;
 
-      if (noteText.trim() || hasFile) {
-        document.getElementById('loading-overlay').classList.add('active');
-
-        const texts = [
-          "Analyzing notes...",
-          "Extracting key concepts...",
-          "Generating summary...",
-          "Formatting output...",
-          "Almost ready..."
-        ];
-        let i = 0;
-        setInterval(() => {
-          i = (i + 1) % texts.length;
-          document.getElementById('loading-text').textContent = texts[i];
-        }, 3000);
+      if (!noteText.trim() && !hasFile) {
+        alert("Please enter some text or upload a file first.");
+        return;
       }
+
+      // Show overlay
+      const overlay = document.getElementById('loading-overlay');
+      const loadingText = document.getElementById('loading-text');
+      overlay.classList.add('active');
+
+      const texts = [
+        "Analyzing notes...",
+        "Extracting key concepts...",
+        "Generating summary...",
+        "Formatting output...",
+        "Almost ready..."
+      ];
+      let i = 0;
+      const loadingInterval = setInterval(() => {
+        i = (i + 1) % texts.length;
+        loadingText.textContent = texts[i];
+      }, 3000);
+
+      // Hide active results while loading new ones
+      const summaryResult = document.getElementById('summary-result');
+      summaryResult.classList.remove('visible');
+      setTimeout(() => {
+        if (!summaryResult.classList.contains('visible')) {
+          summaryResult.style.display = 'none';
+        }
+      }, 500);
+
+      // Stop speech synthesis if playing
+      if (isSpeaking) {
+        synth.cancel();
+        isSpeaking = false;
+        const listenBtn = document.getElementById('listen-btn');
+        listenBtn.innerHTML = '🔊 Listen';
+        listenBtn.classList.remove('speaking');
+      }
+
+      // Send form data via fetch
+      const formData = new FormData(summarizeForm);
+      fetch('/summarize', {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error("HTTP error " + response.status);
+        }
+        return response.json();
+      })
+      .then(data => {
+        clearInterval(loadingInterval);
+        overlay.classList.remove('active');
+
+        if (data.summary) {
+          const summaryBox = document.getElementById('summary-box');
+          const pdfSummaryText = document.getElementById('pdf-summary-text');
+          
+          summaryBox.innerHTML = data.summary;
+          pdfSummaryText.value = data.summary;
+
+          // Animate rendering of the results box
+          summaryResult.style.display = 'block';
+          // Force layout reflow
+          void summaryResult.offsetHeight;
+          summaryResult.classList.add('visible');
+        } else {
+          alert("Could not generate summary: " + (data.error || "unknown error"));
+        }
+      })
+      .catch(err => {
+        clearInterval(loadingInterval);
+        overlay.classList.remove('active');
+        console.error("AJAX Error:", err);
+        alert("An error occurred while generating the summary. Please check your network or try again.");
+      });
     });
 
     function copySummary() {
