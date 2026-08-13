@@ -72,7 +72,8 @@
       <div class="summary-result">
         <div class="summary-header-row">
           <h2>📌 AI Structured Summary</h2>
-          <div class="summary-actions">
+          <div class="summary-actions" style="display: flex; gap: 8px;">
+            <button onclick="toggleListen()" class="btn-secondary" id="listen-btn">🔊 Listen</button>
             <button onclick="copySummary()" class="btn-secondary" id="copy-btn">📋 Copy Summary</button>
           </div>
         </div>
@@ -164,6 +165,64 @@
       }).catch(err => {
         console.error('Failed to copy: ', err);
       });
+    }
+
+    let synth = window.speechSynthesis;
+    let utterance = null;
+    let isSpeaking = false;
+
+    function toggleListen() {
+      const listenBtn = document.getElementById('listen-btn');
+      const summaryBox = document.getElementById('summary-box');
+      const text = summaryBox.innerText || summaryBox.textContent;
+
+      if (isSpeaking) {
+        synth.cancel();
+        isSpeaking = false;
+        listenBtn.innerHTML = '🔊 Listen';
+        listenBtn.classList.remove('speaking');
+      } else {
+        if (!text.trim()) return;
+
+        // Clean text for cleaner readout
+        let cleanText = text.replace(/📝|•|📌|⚠️|🔊|📋|📥/g, '').trim();
+
+        utterance = new SpeechSynthesisUtterance(cleanText);
+
+        // Detect language setting
+        const selectedLanguage = document.getElementById('language').value;
+        let langCode = 'en-US';
+        if (selectedLanguage === 'Tamil') {
+          langCode = 'ta-IN';
+        } else if (selectedLanguage === 'Hindi') {
+          langCode = 'hi-IN';
+        }
+        utterance.lang = langCode;
+
+        // Find match voice if loaded
+        let voices = synth.getVoices();
+        let matchedVoice = voices.find(voice => voice.lang.startsWith(langCode));
+        if (matchedVoice) {
+          utterance.voice = matchedVoice;
+        }
+
+        utterance.onend = () => {
+          isSpeaking = false;
+          listenBtn.innerHTML = '🔊 Listen';
+          listenBtn.classList.remove('speaking');
+        };
+
+        utterance.onerror = () => {
+          isSpeaking = false;
+          listenBtn.innerHTML = '🔊 Listen';
+          listenBtn.classList.remove('speaking');
+        };
+
+        synth.speak(utterance);
+        isSpeaking = true;
+        listenBtn.innerHTML = '⏹️ Stop';
+        listenBtn.classList.add('speaking');
+      }
     }
   </script>
 </body>

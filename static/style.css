@@ -440,6 +440,18 @@ textarea:focus {
   transform: translateY(-1px);
 }
 
+.btn-secondary.speaking {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.25);
+}
+
+.btn-secondary.speaking:hover {
+  background: rgba(239, 68, 68, 0.25);
+  transform: translateY(-1px);
+}
+
 .summary-box {
   background: rgba(17, 24, 39, 0.9);
   padding: 24px;
