@@ -233,7 +233,7 @@
       const hasFile = fileInput.files.length > 0;
 
       if (!noteText.trim() && !hasFile) {
-        alert("Please enter some text or upload a file first.");
+        showToast("Please enter some text or upload a file first.", "error");
         return;
       }
 
@@ -326,30 +326,31 @@
           }
           saveToHistory(title, data.summary, data.key_topics || [], noteText);
         } else {
-          alert("Could not generate summary: " + (data.error || "unknown error"));
+          showToast("Could not generate summary: " + (data.error || "unknown error"), "error");
         }
       })
       .catch(err => {
         clearInterval(loadingInterval);
         overlay.classList.remove('active');
         console.error("AJAX Error:", err);
-        alert("An error occurred while generating the summary. Please check your network or try again.");
+        showToast("An error occurred while generating the summary. Please check your connection.", "error");
       });
     });
 
     function copySummary() {
       const summaryBox = document.getElementById('summary-box');
-      const copyBtn = document.getElementById('copy-btn');
-      
       const text = summaryBox.innerText || summaryBox.textContent;
       
+      if (!text.trim()) {
+        showToast("No summary content to copy!", "error");
+        return;
+      }
+      
       navigator.clipboard.writeText(text).then(() => {
-        copyBtn.innerHTML = '✅ Copied!';
-        setTimeout(() => {
-          copyBtn.innerHTML = '📋 Copy Summary';
-        }, 2000);
+        showToast("Summary copied to clipboard!", "success");
       }).catch(err => {
         console.error('Failed to copy: ', err);
+        showToast("Failed to copy summary to clipboard.", "error");
       });
     }
 
@@ -593,6 +594,36 @@
     document.addEventListener('DOMContentLoaded', () => {
       renderHistory();
     });
+
+    // Toast Notification System
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      
+      let icon = 'ℹ️';
+      if (type === 'success') icon = '✅';
+      else if (type === 'error') icon = '⚠️';
+
+      toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+      container.appendChild(toast);
+
+      // Force layout reflow
+      void toast.offsetHeight;
+      toast.classList.add('show');
+
+      // Slide out and remove toast
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+          toast.remove();
+        }, 400);
+      }, 3500);
+    }
   </script>
+
+  <div id="toast-container" class="toast-container"></div>
 </body>
 </html>
