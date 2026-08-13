@@ -234,6 +234,13 @@
     let utterance = null;
     let isSpeaking = false;
 
+    // Trigger voice population immediately (required for Chrome and Safari)
+    if (synth.onvoiceschanged !== undefined) {
+      synth.onvoiceschanged = () => {
+        synth.getVoices();
+      };
+    }
+
     function toggleListen() {
       const listenBtn = document.getElementById('listen-btn');
       const summaryBox = document.getElementById('summary-box');
@@ -262,11 +269,33 @@
         }
         utterance.lang = langCode;
 
+        // Adjust rate for regional languages (slightly slower makes regional speech synthesis much clearer)
+        utterance.rate = (langCode === 'en-US') ? 1.0 : 0.85;
+
         // Find match voice if loaded
         let voices = synth.getVoices();
-        let matchedVoice = voices.find(voice => voice.lang.startsWith(langCode));
-        if (matchedVoice) {
-          utterance.voice = matchedVoice;
+        let langVoices = voices.filter(voice => {
+          let voiceLang = voice.lang.replace('_', '-').toLowerCase();
+          let targetLang = langCode.toLowerCase();
+          return voiceLang === targetLang || voiceLang.startsWith(targetLang + '-') || targetLang.startsWith(voiceLang + '-');
+        });
+
+        let selectedVoice = null;
+        if (langVoices.length > 0) {
+          // 1. Prioritize Google native natural cloud voices (excellent quality in Chrome)
+          selectedVoice = langVoices.find(v => v.name.toLowerCase().includes('google'));
+          // 2. Prioritize Microsoft native / Natural voices
+          if (!selectedVoice) {
+            selectedVoice = langVoices.find(v => v.name.toLowerCase().includes('microsoft') || v.name.toLowerCase().includes('natural'));
+          }
+          // 3. Fallback to first matching voice
+          if (!selectedVoice) {
+            selectedVoice = langVoices[0];
+          }
+        }
+
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
         }
 
         utterance.onend = () => {
