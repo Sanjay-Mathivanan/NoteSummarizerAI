@@ -53,29 +53,43 @@
       <textarea name="noteText" placeholder="Paste your text here...">{{ input_text }}</textarea>
 
       <div class="options-box">
-        <div class="option-group">
-          <label for="summaryType">📝 Summary Type:</label>
-          <select name="summaryType" id="summaryType">
-            <option value="Paragraph" {% if selected_summary_type == 'Paragraph' %}selected{% endif %}>Paragraph</option>
-            <option value="Bullet Points" {% if selected_summary_type == 'Bullet Points' %}selected{% endif %}>Bullet Points</option>
-            <option value="Structured Notes" {% if selected_summary_type == 'Structured Notes' %}selected{% endif %}>Structured Notes</option>
-            <option value="Outline" {% if selected_summary_type == 'Outline' %}selected{% endif %}>Outline</option>
-          </select>
+        <div class="option-group full-width-mobile">
+          <label>📝 Summary Type:</label>
+          <div class="segmented-control type-control">
+            <input type="radio" name="summaryType" id="type-paragraph" value="Paragraph" {% if selected_summary_type == 'Paragraph' or not selected_summary_type %}checked{% endif %}>
+            <label for="type-paragraph">Paragraph</label>
+            
+            <input type="radio" name="summaryType" id="type-bullets" value="Bullet Points" {% if selected_summary_type == 'Bullet Points' %}checked{% endif %}>
+            <label for="type-bullets">Bullets</label>
+            
+            <input type="radio" name="summaryType" id="type-structured" value="Structured Notes" {% if selected_summary_type == 'Structured Notes' %}checked{% endif %}>
+            <label for="type-structured">Structured</label>
+            
+            <input type="radio" name="summaryType" id="type-outline" value="Outline" {% if selected_summary_type == 'Outline' %}checked{% endif %}>
+            <label for="type-outline">Outline</label>
+            <div class="segmented-slider"></div>
+          </div>
         </div>
 
         <div class="option-group">
-          <label for="length">📏 Length:</label>
-          <select name="length" id="length">
-            <option value="Short" {% if selected_length == 'Short' %}selected{% endif %}>Short</option>
-            <option value="Medium" {% if selected_length == 'Medium' %}selected{% endif %}>Medium</option>
-            <option value="Long" {% if selected_length == 'Long' %}selected{% endif %}>Long</option>
-          </select>
+          <label>📏 Length:</label>
+          <div class="segmented-control length-control">
+            <input type="radio" name="length" id="length-short" value="Short" {% if selected_length == 'Short' %}checked{% endif %}>
+            <label for="length-short">Short</label>
+            
+            <input type="radio" name="length" id="length-medium" value="Medium" {% if selected_length == 'Medium' or not selected_length %}checked{% endif %}>
+            <label for="length-medium">Medium</label>
+            
+            <input type="radio" name="length" id="length-long" value="Long" {% if selected_length == 'Long' %}checked{% endif %}>
+            <label for="length-long">Long</label>
+            <div class="segmented-slider"></div>
+          </div>
         </div>
 
         <div class="option-group">
           <label for="language">🌐 Language:</label>
           <select name="language" id="language">
-            <option value="English" {% if selected_language == 'English' %}selected{% endif %}>English</option>
+            <option value="English" {% if selected_language == 'English' or not selected_language %}selected{% endif %}>English</option>
             <option value="Tamil" {% if selected_language == 'Tamil' %}selected{% endif %}>Tamil</option>
             <option value="Hindi" {% if selected_language == 'Hindi' %}selected{% endif %}>Hindi</option>
           </select>

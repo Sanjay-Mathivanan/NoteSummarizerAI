@@ -797,3 +797,101 @@ footer a:hover {
   transform: translateY(-1px);
   box-shadow: 0 4px 10px rgba(99, 102, 241, 0.15);
 }
+
+/* Segmented Control styling */
+.segmented-control {
+  position: relative;
+  display: flex;
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid var(--card-border);
+  padding: 4px;
+  border-radius: 12px;
+  width: 100%;
+  height: 48px;
+  align-items: center;
+  overflow: hidden;
+}
+
+.segmented-control input[type="radio"] {
+  display: none;
+}
+
+.segmented-control label {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  z-index: 2;
+  margin-bottom: 0;
+  transition: color 0.25s ease;
+  user-select: none;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.segmented-control input[type="radio"]:checked + label {
+  color: #fff;
+}
+
+/* Slider indicator */
+.segmented-slider {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  border-radius: 8px;
+  background: var(--primary-gradient);
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  z-index: 1;
+}
+
+/* Calculations for Length Control (3 items) */
+.length-control .segmented-slider {
+  width: calc(100% / 3 - 8px / 3);
+}
+
+#length-short:checked ~ .segmented-slider {
+  left: 4px;
+}
+
+#length-medium:checked ~ .segmented-slider {
+  left: calc(100% / 3);
+}
+
+#length-long:checked ~ .segmented-slider {
+  left: calc(2 * 100% / 3 - 4px);
+}
+
+/* Calculations for Type Control (4 items) */
+.type-control .segmented-slider {
+  width: calc(100% / 4 - 8px / 4);
+}
+
+#type-paragraph:checked ~ .segmented-slider {
+  left: 4px;
+}
+
+#type-bullets:checked ~ .segmented-slider {
+  left: calc(100% / 4);
+}
+
+#type-structured:checked ~ .segmented-slider {
+  left: calc(2 * 100% / 4 - 2px);
+}
+
+#type-outline:checked ~ .segmented-slider {
+  left: calc(3 * 100% / 4 - 4px);
+}
+
+/* Make option group expand nicely on mobile */
+@media (max-width: 900px) {
+  .full-width-mobile {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+}
