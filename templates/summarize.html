@@ -56,7 +56,13 @@
         </div>
 
         <div class="input-split-right">
-          <textarea name="noteText" placeholder="Paste your text here...">{{ input_text }}</textarea>
+          <div class="textarea-container">
+            <textarea name="noteText" id="note-text" placeholder="Paste your text here...">{{ input_text }}</textarea>
+            <div class="counter-box">
+              <span id="char-counter">0 characters</span>
+              <span id="word-counter">0 words</span>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -534,7 +540,8 @@
         const item = history.find(i => i.id === id);
         if (!item) return;
 
-        document.querySelector('textarea[name="noteText"]').value = item.input_text;
+        document.getElementById('note-text').value = item.input_text;
+        updateCounters();
         
         const summaryBox = document.getElementById('summary-box');
         const pdfSummaryText = document.getElementById('pdf-summary-text');
@@ -593,7 +600,41 @@
     // Initialize history on page load
     document.addEventListener('DOMContentLoaded', () => {
       renderHistory();
+      
+      // Initialize live counters
+      const noteTextarea = document.getElementById('note-text');
+      if (noteTextarea) {
+        noteTextarea.addEventListener('input', updateCounters);
+        updateCounters();
+      }
     });
+
+    function updateCounters() {
+      const noteTextarea = document.getElementById('note-text');
+      const charCounter = document.getElementById('char-counter');
+      const wordCounter = document.getElementById('word-counter');
+      const counterBox = noteTextarea ? noteTextarea.nextElementSibling : null;
+
+      if (!noteTextarea || !charCounter || !wordCounter || !counterBox) return;
+
+      const text = noteTextarea.value;
+      const charCount = text.length;
+      
+      const cleanText = text.trim();
+      const wordCount = cleanText === "" ? 0 : cleanText.split(/\s+/).length;
+
+      charCounter.textContent = charCount + ' character' + (charCount !== 1 ? 's' : '');
+      wordCounter.textContent = wordCount + ' word' + (wordCount !== 1 ? 's' : '');
+
+      counterBox.classList.remove('warning', 'limit');
+      if (wordCount > 0 && wordCount < 30) {
+        counterBox.classList.add('warning');
+        wordCounter.textContent += ' (Too short)';
+      } else if (wordCount > 1500) {
+        counterBox.classList.add('limit');
+        wordCounter.textContent += ' (Will be chunked)';
+      }
+    }
 
     // Toast Notification System
     function showToast(message, type = 'info') {
